@@ -21,7 +21,7 @@
 Function Get-SiteCode
 {
   $wqlQuery = 'SELECT * FROM SMS_ProviderLocation'
-  $a = Get-WmiObject -Query $wqlQuery -Namespace 'root\sms' -ComputerName $SMSProvider
+  $a = Get-WmiObject -Query $wqlQuery -Namespace 'root\sms' -ComputerName $SMSProvider -ErrorAction Stop
   $a | ForEach-Object {
     if($_.ProviderForLocalSite)
     {

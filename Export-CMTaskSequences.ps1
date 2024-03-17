@@ -107,7 +107,7 @@ param(
     [string]$SMSProvider,
     
     [ValidateNotNullOrEmpty()]
-    [string]$RepoPath = (Join-Path "FileSystem::" -ChildPath $PSScriptRoot),
+    [string]$RepoPath = ("FileSystem::" + $PSScriptRoot),
 
     [ValidateNotNullOrEmpty()]
     [string]$OutputPath = (Join-path $RepoPath -ChildPath "CMTaskSequences"),
@@ -149,6 +149,19 @@ $LastUpdatedTSPath = Join-Path $RepoPath -ChildPath "LastUpdatedTS.txt"
 $LastRunPath = Join-Path $RepoPath -ChildPath "LastRun.txt"
 $LastErrorPath = Join-Path $RepoPath -ChildPath "LastError.txt"
 
+# Create files if they do not exist
+if (!(Test-Path $LastUpdatedTSPath)) {
+    New-Item -ItemType File -Path $LastUpdatedTSPath -Force | out-null
+}
+
+if (!(Test-Path $LastRunPath)) {
+    New-Item -ItemType File -Path $LastRunPath -Force  | out-null
+}
+
+if (!(Test-Path $LastErrorPath)) {
+    New-Item -ItemType File -Path $LastErrorPath -Force  | out-null
+}
+
 # Set the base Date. This is modified later if needed.
 $Date = [DateTime]::MinValue
 
@@ -161,18 +174,28 @@ try {
 }
 
 # Get sitecode and load CM cmdlets
-$SiteCode = Get-SiteCode
-
-# Import the ConfigurationManager.psd1 module 
-if($null -eq (Get-Module ConfigurationManager)) {
-    Import-Module "$($ENV:SMS_ADMIN_UI_PATH)\..\ConfigurationManager.psd1" 
+try {
+    $SiteCode = Get-SiteCode
+} catch {
+    throw "Failed to get the ConfigMgr SiteCode. Do you have access to the SMS Provider?"
 }
 
-# Connect to the site's drive if it is not already present
-if($null -eq (Get-PSDrive -Name $SiteCode -PSProvider CMSite -ErrorAction SilentlyContinue)) {
-    New-PSDrive -Name $SiteCode -PSProvider CMSite -Root $SMSProvider 
-}
-$CMPSSuppressFastNotUsedCheck = $true
+
+try {
+    # Import the ConfigurationManager.psd1 module 
+    if($null -eq (Get-Module ConfigurationManager)) {
+        Import-Module "$($ENV:SMS_ADMIN_UI_PATH)\..\ConfigurationManager.psd1" -erroraction stop
+    }
+
+    # Connect to the site's drive if it is not already present
+    if($null -eq (Get-PSDrive -Name $SiteCode -PSProvider CMSite -ErrorAction SilentlyContinue)) {
+        New-PSDrive -Name $SiteCode -PSProvider CMSite -Root $SMSProvider -erroraction stop
+    }
+    $CMPSSuppressFastNotUsedCheck = $true
+} catch {
+    throw "Failed to import the ConfigMgr module."
+    }
+
 
 Set-Location "$($SiteCode):"
 
